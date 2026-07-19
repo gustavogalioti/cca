@@ -370,6 +370,32 @@
 </svg>
 
 <script>
+// window.storage só existe dentro do ambiente de artifacts do Claude.
+// Fora dele (ex: este site no GitHub Pages), usamos localStorage do navegador
+// pra persistir os dados de verdade entre visitas.
+if(!window.storage){
+  window.storage = {
+    async set(key, value){
+      try{ localStorage.setItem(key, value); return {key, value}; }
+      catch(e){ return null; }
+    },
+    async get(key){
+      const v = localStorage.getItem(key);
+      if(v === null) throw new Error('key not found: ' + key);
+      return {key, value: v};
+    },
+    async delete(key){
+      localStorage.removeItem(key);
+      return {key, deleted: true};
+    },
+    async list(prefix){
+      const p = prefix || '';
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(p));
+      return {keys, prefix};
+    }
+  };
+}
+
 let currentPhotoData = null; // resized base64
 let editingId = null;
 
