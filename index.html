@@ -859,6 +859,63 @@ var QRCode;
     font-family:'Cormorant Garamond',serif;color:var(--gold-bright);font-size:1.3rem;margin:0;font-weight:600;
   }
   .gallery-head span{font-size:.75rem;opacity:.6;}
+
+  /* Tabs */
+  .tabs{
+    display:flex;justify-content:center;gap:8px;
+    margin-bottom:28px;
+  }
+  .tab-btn{
+    padding:10px 22px;border-radius:999px;
+    border:1px solid rgba(198,161,91,.4);
+    background:transparent;color:var(--cream);
+    font-size:.82rem;letter-spacing:.04em;cursor:pointer;
+    opacity:.7;
+  }
+  .tab-btn:hover{opacity:.9;}
+  .tab-btn.active{
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold));
+    color:#26210f;font-weight:700;opacity:1;border-color:transparent;
+  }
+
+  /* Calendar */
+  .cal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:12px;
+  }
+  .cal-header .cal-label{
+    font-family:'Cormorant Garamond',serif;font-size:1.15rem;
+    color:var(--gold-bright);text-transform:capitalize;
+  }
+  button.cal-nav{padding:6px 12px;font-size:.9rem;}
+  .cal-weekdays{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    text-align:center;font-size:.68rem;opacity:.55;
+    margin-bottom:4px;
+  }
+  .cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);
+    gap:4px;
+  }
+  .cal-day{
+    aspect-ratio:1;border-radius:8px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:.78rem;cursor:pointer;position:relative;
+    background:rgba(255,255,255,.03);
+    border:1px solid transparent;
+  }
+  .cal-day:hover{background:rgba(198,161,91,.12);}
+  .cal-day.empty{visibility:hidden;cursor:default;}
+  .cal-day.today{border-color:var(--gold);}
+  .cal-day.selected{background:rgba(198,161,91,.25);border-color:var(--gold-bright);}
+  .cal-day .dot{
+    width:5px;height:5px;border-radius:50%;background:var(--gold-bright);
+    margin-top:2px;
+  }
+
+  /* Event mini-cards */
+  .mini-card .mini-when{font-size:.72rem;color:var(--green-deep);font-weight:700;margin-bottom:2px;}
+  .mini-card .mini-guests{font-size:.65rem;color:var(--ink-soft);margin-top:3px;line-height:1.3;}
   .gallery{
     display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
     gap:14px;
@@ -912,6 +969,12 @@ var QRCode;
     <p>CCA · Carteirinha de Sócio</p>
   </header>
 
+  <div class="tabs">
+    <button class="tab-btn active" id="tabBtnSocios">Cadastro / Sócios</button>
+    <button class="tab-btn" id="tabBtnEventos">Eventos</button>
+  </div>
+
+  <div id="tabSocios" class="tab-panel">
   <div class="grid">
     <!-- FORM -->
     <div class="panel">
@@ -987,8 +1050,59 @@ var QRCode;
     <span id="galleryCount"></span>
   </div>
   <div class="gallery" id="gallery"></div>
+  </div>
+  <!-- /tabSocios -->
+
+  <div id="tabEventos" class="tab-panel" style="display:none">
+    <div class="grid">
+      <!-- CALENDAR -->
+      <div class="panel">
+        <h2>Calendário</h2>
+        <div class="cal-header">
+          <button class="ghost cal-nav" id="calPrev">‹</button>
+          <span class="cal-label" id="calLabel">—</span>
+          <button class="ghost cal-nav" id="calNext">›</button>
+        </div>
+        <div class="cal-weekdays">
+          <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <!-- EVENT FORM -->
+      <div class="panel">
+        <h2 id="eventFormTitle">Novo evento</h2>
+
+        <label for="eTitulo">Título</label>
+        <input type="text" id="eTitulo" placeholder="Ex: Almoço de domingo">
+
+        <label for="eData">Data</label>
+        <input type="date" id="eData">
+
+        <label for="eHora">Hora</label>
+        <input type="time" id="eHora">
+
+        <label for="eConvidados">Convidados</label>
+        <input type="text" id="eConvidados" placeholder="Nomes separados por vírgula">
+
+        <div class="actions">
+          <button class="primary" id="btnEventoSalvar">Adicionar evento</button>
+          <button class="ghost" id="btnEventoLimpar">Limpar</button>
+        </div>
+        <div class="status" id="eventStatus"></div>
+      </div>
+    </div>
+
+    <div class="gallery-head">
+      <h2 id="eventListTitle">Próximos eventos</h2>
+      <span id="eventCount"></span>
+    </div>
+    <div class="gallery" id="eventList"></div>
+  </div>
+  <!-- /tabEventos -->
 
 </div>
+<!-- /wrap -->
 
 <!-- shared SVG crest definition -->
 <svg width="0" height="0" style="position:absolute">
@@ -1259,6 +1373,182 @@ async function loadGallery(){
 function escapeHtml(s){
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+/* ---------- TABS ---------- */
+$('tabBtnSocios').addEventListener('click', ()=>{
+  $('tabBtnSocios').classList.add('active');
+  $('tabBtnEventos').classList.remove('active');
+  $('tabSocios').style.display = '';
+  $('tabEventos').style.display = 'none';
+});
+$('tabBtnEventos').addEventListener('click', ()=>{
+  $('tabBtnEventos').classList.add('active');
+  $('tabBtnSocios').classList.remove('active');
+  $('tabEventos').style.display = '';
+  $('tabSocios').style.display = 'none';
+  refreshEventos();
+});
+
+/* ---------- EVENTOS ---------- */
+const MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+let calDate = new Date(); calDate.setDate(1);
+let selectedDateStr = null;
+let editingEventId = null;
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+function dateKey(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function formatDateTimeShort(dataIso, hora){
+  if(!dataIso) return '—';
+  const [y,m,d] = dataIso.split('-');
+  return `${d}/${m}/${y}` + (hora ? ` às ${hora}` : '');
+}
+
+async function getAllEvents(){
+  const listRes = await window.storage.list('evento:', true);
+  const keys = (listRes && listRes.keys) || [];
+  const items = [];
+  for(const key of keys){
+    try{
+      const r = await window.storage.get(key, true);
+      if(r && r.value) items.push({key, data: JSON.parse(r.value)});
+    }catch(e){ /* skip */ }
+  }
+  return items;
+}
+
+function renderCalendar(events){
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  $('calLabel').textContent = `${MESES_PT[month]} ${year}`;
+
+  const eventDays = new Set(events.map(({data})=> data.data));
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayKey = dateKey(new Date());
+
+  const grid = $('calGrid');
+  grid.innerHTML = '';
+  for(let i=0;i<firstWeekday;i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.appendChild(empty);
+  }
+  for(let day=1; day<=daysInMonth; day++){
+    const thisKey = `${year}-${pad2(month+1)}-${pad2(day)}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-day' + (thisKey===todayKey?' today':'') + (thisKey===selectedDateStr?' selected':'');
+    cell.innerHTML = String(day) + (eventDays.has(thisKey) ? '<div class="dot"></div>' : '');
+    cell.addEventListener('click', ()=>{
+      selectedDateStr = thisKey;
+      $('eData').value = thisKey;
+      renderCalendar(events);
+    });
+    grid.appendChild(cell);
+  }
+}
+
+function renderEventList(events){
+  const listEl = $('eventList');
+  $('eventCount').textContent = events.length ? (events.length + (events.length===1?' evento':' eventos')) : '';
+  if(events.length === 0){
+    listEl.innerHTML = '<div class="empty-note">Nenhum evento cadastrado ainda.</div>';
+    return;
+  }
+  const sorted = [...events].sort((a,b)=>{
+    const da = (a.data.data||'') + 'T' + (a.data.hora||'00:00');
+    const db = (b.data.data||'') + 'T' + (b.data.hora||'00:00');
+    return da.localeCompare(db);
+  });
+  listEl.innerHTML = '';
+  sorted.forEach(({key, data})=>{
+    const card = document.createElement('div');
+    card.className = 'mini-card';
+    card.innerHTML = `
+      <div class="mini-actions">
+        <button class="mini-edit" title="Editar">✎</button>
+        <button class="mini-del" title="Excluir">✕</button>
+      </div>
+      <div class="mini-when">${formatDateTimeShort(data.data, data.hora)}</div>
+      <div class="mini-name">${escapeHtml(data.titulo||'—')}</div>
+      ${data.convidados ? `<div class="mini-guests">Convidados: ${escapeHtml(data.convidados)}</div>` : ''}
+    `;
+    function loadIntoForm(){
+      editingEventId = key.replace('evento:','');
+      $('eTitulo').value = data.titulo||'';
+      $('eData').value = data.data||'';
+      $('eHora').value = data.hora||'';
+      $('eConvidados').value = data.convidados||'';
+      $('eventFormTitle').textContent = 'Editar evento';
+      $('btnEventoSalvar').textContent = 'Salvar alterações';
+      setEventStatus('Evento carregado para edição.');
+    }
+    card.addEventListener('click', (e)=>{
+      if(e.target.classList.contains('mini-del') || e.target.classList.contains('mini-edit')) return;
+      loadIntoForm();
+    });
+    card.querySelector('.mini-edit').addEventListener('click', (e)=>{ e.stopPropagation(); loadIntoForm(); });
+    card.querySelector('.mini-del').addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      try{
+        await window.storage.delete(key, true);
+        if(editingEventId === key.replace('evento:','')) clearEventForm();
+        refreshEventos();
+      }catch(err){ setEventStatus('Não foi possível excluir.', true); }
+    });
+    listEl.appendChild(card);
+  });
+}
+
+async function refreshEventos(){
+  try{
+    const events = await getAllEvents();
+    renderCalendar(events);
+    renderEventList(events);
+  }catch(err){
+    $('eventList').innerHTML = '<div class="empty-note">Não foi possível carregar os eventos agora.</div>';
+  }
+}
+
+function setEventStatus(msg, isErr){
+  const el = $('eventStatus');
+  el.textContent = msg;
+  el.className = 'status' + (isErr ? ' err' : '');
+}
+
+function clearEventForm(){
+  $('eTitulo').value=''; $('eData').value=''; $('eHora').value=''; $('eConvidados').value='';
+  editingEventId = null;
+  $('eventFormTitle').textContent = 'Novo evento';
+  $('btnEventoSalvar').textContent = 'Adicionar evento';
+  setEventStatus('');
+}
+
+async function saveEvento(){
+  const titulo = $('eTitulo').value.trim();
+  const data = $('eData').value;
+  const hora = $('eHora').value;
+  const convidados = $('eConvidados').value.trim();
+  if(!titulo){ setEventStatus('Informe o título do evento.', true); return; }
+  if(!data){ setEventStatus('Informe a data do evento.', true); return; }
+  const id = editingEventId || ('e' + Date.now());
+  const payload = { titulo, data, hora, convidados };
+  try{
+    const res = await window.storage.set('evento:'+id, JSON.stringify(payload), true);
+    if(!res){ setEventStatus('Não foi possível salvar — tente novamente.', true); return; }
+    editingEventId = id;
+    $('eventFormTitle').textContent = 'Editar evento';
+    $('btnEventoSalvar').textContent = 'Salvar alterações';
+    setEventStatus('Evento salvo ✓');
+    refreshEventos();
+  }catch(err){
+    setEventStatus('Erro ao salvar: ' + (err && err.message ? err.message : 'desconhecido'), true);
+  }
+}
+
+$('btnEventoSalvar').addEventListener('click', saveEvento);
+$('btnEventoLimpar').addEventListener('click', clearEventForm);
+$('calPrev').addEventListener('click', ()=>{ calDate.setMonth(calDate.getMonth()-1); refreshEventos(); });
+$('calNext').addEventListener('click', ()=>{ calDate.setMonth(calDate.getMonth()+1); refreshEventos(); });
 
 // initial render
 loadGallery();
