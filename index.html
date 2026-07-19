@@ -485,13 +485,18 @@ CPF: ${data.cpf || ''}
 Membro desde: ${formatDate(data.desde)}`;
   const qrDiv = $('qrHost');
   qrDiv.innerHTML = '';
-  new QRCode(qrDiv, {
-    text: qrText,
-    width: 62, height: 62,
-    colorDark: '#16301F',
-    colorLight: '#FBF7EC',
-    correctLevel: QRCode.CorrectLevel.M
-  });
+  try{
+    if(typeof QRCode === 'undefined') throw new Error('QRCode lib não carregada');
+    new QRCode(qrDiv, {
+      text: qrText,
+      width: 62, height: 62,
+      colorDark: '#16301F',
+      colorLight: '#FBF7EC',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }catch(qrErr){
+    qrDiv.innerHTML = '<div style="font-size:.5rem;color:#5B5748;width:62px;text-align:center;">QR indisponível</div>';
+  }
 }
 
 function clearForm(){
@@ -510,15 +515,16 @@ async function saveSocio(){
   if(!nome){ setStatus('Informe o nome do sócio.', true); return; }
   const id = editingId || ('s' + Date.now());
   const data = { nome, cpf, desde, foto: currentPhotoData };
-  renderCard(data);
   try{
     const res = await window.storage.set('socio:'+id, JSON.stringify(data), true);
     if(!res){ setStatus('Não foi possível salvar — tente novamente.', true); return; }
-    setStatus('Carteirinha gerada e salva ✓');
     editingId = id;
+    renderCard(data);
+    setStatus('Carteirinha gerada e salva ✓');
     loadGallery();
   }catch(err){
-    setStatus('Erro ao salvar. A prévia acima ainda funciona.', true);
+    renderCard(data);
+    setStatus('Erro ao salvar: ' + (err && err.message ? err.message : 'desconhecido'), true);
   }
 }
 
@@ -586,8 +592,8 @@ function escapeHtml(s){
 }
 
 // initial render
-renderCard({nome:'', cpf:'', desde:'', foto:null});
 loadGallery();
+renderCard({nome:'', cpf:'', desde:'', foto:null});
 </script>
 </body>
 </html>
