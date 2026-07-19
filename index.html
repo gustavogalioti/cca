@@ -824,18 +824,19 @@ var QRCode;
     display:flex;align-items:center;justify-content:center;
     font-family:'Cormorant Garamond',serif;font-size:1.8rem;color:var(--green-deep);
   }
-  .card-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;}
+  .card-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;padding-right:74px;}
   .card-info .field-label{
     font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);
-    margin-top:8px;
+    margin-top:5px;
   }
   .card-info .field-label:first-child{margin-top:0;}
   .card-info .socio-name{
-    font-family:'Cormorant Garamond',serif;font-weight:700;font-size:1.28rem;
-    line-height:1.1;color:var(--green-deep);
+    font-family:'Cormorant Garamond',serif;font-weight:700;font-size:1.14rem;
+    line-height:1.08;color:var(--green-deep);
     word-break:break-word;
   }
-  .card-info .field-value{font-size:.85rem;font-weight:600;color:var(--ink);}
+  .card-info .field-value{font-size:.8rem;font-weight:600;color:var(--ink);}
+  .card-info .field-value-small{font-size:.64rem;font-weight:500;line-height:1.25;}
   .card-qr-wrap{
     position:absolute;right:16px;bottom:14px;
     display:flex;flex-direction:column;align-items:center;gap:3px;
@@ -879,13 +880,18 @@ var QRCode;
   }
   .mini-card .mini-name{font-weight:700;font-size:.85rem;line-height:1.2;}
   .mini-card .mini-since{font-size:.65rem;color:var(--ink-soft);margin-top:2px;}
-  .mini-del{
+  .mini-actions{
     position:absolute;top:6px;right:6px;
+    display:flex;gap:4px;
+  }
+  .mini-edit, .mini-del{
     width:20px;height:20px;border-radius:50%;
-    background:rgba(139,58,58,.12);color:var(--danger);
-    border:none;font-size:.7rem;cursor:pointer;
+    border:none;font-size:.65rem;cursor:pointer;
     display:flex;align-items:center;justify-content:center;
   }
+  .mini-edit{background:rgba(198,161,91,.18);color:var(--green-deep);}
+  .mini-edit:hover{background:rgba(198,161,91,.35);}
+  .mini-del{background:rgba(139,58,58,.12);color:var(--danger);}
   .mini-del:hover{background:rgba(139,58,58,.25);}
   .empty-note{font-size:.85rem;opacity:.55;grid-column:1/-1;}
 
@@ -909,7 +915,7 @@ var QRCode;
   <div class="grid">
     <!-- FORM -->
     <div class="panel">
-      <h2>Cadastrar sócio</h2>
+      <h2 id="formTitle">Cadastrar sócio</h2>
 
       <label for="fNome">Nome completo</label>
       <input type="text" id="fNome" placeholder="Ex: Adriana Prado">
@@ -919,6 +925,12 @@ var QRCode;
 
       <label for="fDesde">Membro desde</label>
       <input type="date" id="fDesde">
+
+      <label for="fTelefone">Telefone</label>
+      <input type="text" id="fTelefone" placeholder="(11) 91234-5678">
+
+      <label for="fEmail">Email</label>
+      <input type="text" id="fEmail" placeholder="nome@email.com">
 
       <label>Foto</label>
       <div class="photo-row">
@@ -956,6 +968,8 @@ var QRCode;
                 <div class="field-value" id="cardDesde">—</div>
                 <div class="field-label">CPF</div>
                 <div class="field-value" id="cardCpf">—</div>
+                <div class="field-label">Contato</div>
+                <div class="field-value field-value-small" id="cardContato">—</div>
               </div>
             </div>
             <div class="card-qr-wrap" id="cardQr"><div id="qrHost"></div><span>verificar</span></div>
@@ -1034,6 +1048,15 @@ function maskCpf(v){
 }
 $('fCpf').addEventListener('input', (e)=>{ e.target.value = maskCpf(e.target.value); });
 
+function maskTelefone(v){
+  v = v.replace(/\D/g,'').slice(0,11);
+  if(v.length>10) return v.replace(/(\d{2})(\d{5})(\d{4})/,'($1) $2-$3');
+  if(v.length>6) return v.replace(/(\d{2})(\d{4})(\d{1,4})/,'($1) $2-$3');
+  if(v.length>2) return v.replace(/(\d{2})(\d{1,5})/,'($1) $2');
+  return v;
+}
+$('fTelefone').addEventListener('input', (e)=>{ e.target.value = maskTelefone(e.target.value); });
+
 function formatDate(iso){
   if(!iso) return '—';
   const [y,m,d] = iso.split('-');
@@ -1086,6 +1109,8 @@ function renderCard(data){
   $('cardNome').textContent = data.nome || 'Nome do Sócio';
   $('cardDesde').textContent = formatDate(data.desde);
   $('cardCpf').textContent = data.cpf || '—';
+  const contatoParts = [data.telefone, data.email].filter(Boolean);
+  $('cardContato').textContent = contatoParts.length ? contatoParts.join(' · ') : '—';
   const photoEl = $('cardPhoto');
   if(data.foto){
     photoEl.style.backgroundImage = `url(${data.foto})`;
@@ -1095,11 +1120,15 @@ function renderCard(data){
     photoEl.textContent = initials(data.nome || '?');
   }
   // QR: encode the identification text directly so any camera can read it, no hosting needed
-  const qrText =
-`CLUBE DE CAMPO ADRIANA - CCA
-Sócio: ${data.nome || ''}
-CPF: ${data.cpf || ''}
-Membro desde: ${formatDate(data.desde)}`;
+  const qrLines = [
+    'CLUBE DE CAMPO ADRIANA - CCA',
+    `Sócio: ${data.nome || ''}`,
+    `CPF: ${data.cpf || ''}`,
+    `Membro desde: ${formatDate(data.desde)}`
+  ];
+  if(data.telefone) qrLines.push(`Telefone: ${data.telefone}`);
+  if(data.email) qrLines.push(`Email: ${data.email}`);
+  const qrText = qrLines.join('\n');
   const qrDiv = $('qrHost');
   qrDiv.innerHTML = '';
   try{
@@ -1118,10 +1147,13 @@ Membro desde: ${formatDate(data.desde)}`;
 
 function clearForm(){
   $('fNome').value=''; $('fCpf').value=''; $('fDesde').value='';
+  $('fTelefone').value=''; $('fEmail').value='';
   currentPhotoData = null; editingId = null;
   $('photoPreview').style.backgroundImage='none';
   $('photoPreview').textContent='?';
   $('fFoto').value='';
+  $('formTitle').textContent = 'Cadastrar sócio';
+  $('btnGerar').textContent = 'Gerar carteirinha';
   setStatus('');
 }
 
@@ -1129,13 +1161,17 @@ async function saveSocio(){
   const nome = $('fNome').value.trim();
   const cpf = $('fCpf').value.trim();
   const desde = $('fDesde').value;
+  const telefone = $('fTelefone').value.trim();
+  const email = $('fEmail').value.trim();
   if(!nome){ setStatus('Informe o nome do sócio.', true); return; }
   const id = editingId || ('s' + Date.now());
-  const data = { nome, cpf, desde, foto: currentPhotoData };
+  const data = { nome, cpf, desde, telefone, email, foto: currentPhotoData };
   try{
     const res = await window.storage.set('socio:'+id, JSON.stringify(data), true);
     if(!res){ setStatus('Não foi possível salvar — tente novamente.', true); return; }
     editingId = id;
+    $('formTitle').textContent = 'Editar sócio';
+    $('btnGerar').textContent = 'Salvar alterações';
     renderCard(data);
     setStatus('Carteirinha gerada e salva ✓');
     loadGallery();
@@ -1173,29 +1209,45 @@ async function loadGallery(){
       const card = document.createElement('div');
       card.className = 'mini-card';
       card.innerHTML = `
-        <button class="mini-del" title="Excluir">✕</button>
+        <div class="mini-actions">
+          <button class="mini-edit" title="Editar">✎</button>
+          <button class="mini-del" title="Excluir">✕</button>
+        </div>
         <div class="mini-photo" style="${data.foto ? `background-image:url(${data.foto})` : ''}">${data.foto ? '' : initials(data.nome||'?')}</div>
         <div class="mini-name">${escapeHtml(data.nome||'—')}</div>
         <div class="mini-since">Sócio desde ${formatDate(data.desde)}</div>
       `;
-      card.addEventListener('click', (e)=>{
-        if(e.target.classList.contains('mini-del')) return;
+      function loadIntoForm(){
         editingId = key.replace('socio:','');
         $('fNome').value = data.nome||'';
         $('fCpf').value = data.cpf||'';
         $('fDesde').value = data.desde||'';
+        $('fTelefone').value = data.telefone||'';
+        $('fEmail').value = data.email||'';
         currentPhotoData = data.foto||null;
         $('photoPreview').style.backgroundImage = data.foto ? `url(${data.foto})` : 'none';
         $('photoPreview').textContent = data.foto ? '' : '?';
         renderCard(data);
+        $('formTitle').textContent = 'Editar sócio';
+        $('btnGerar').textContent = 'Salvar alterações';
         setStatus('Sócio carregado para edição.');
         window.scrollTo({top:0, behavior:'smooth'});
+      }
+      card.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('mini-del') || e.target.classList.contains('mini-edit')) return;
+        loadIntoForm();
       });
-      card.querySelector('.mini-del').addEventListener('click', async ()=>{
+      card.querySelector('.mini-edit').addEventListener('click', (e)=>{
+        e.stopPropagation();
+        loadIntoForm();
+      });
+      card.querySelector('.mini-del').addEventListener('click', async (e)=>{
+        e.stopPropagation();
         try{
           await window.storage.delete(key, true);
+          if(editingId === key.replace('socio:','')) clearForm();
           loadGallery();
-        }catch(e){ setStatus('Não foi possível excluir.', true); }
+        }catch(err){ setStatus('Não foi possível excluir.', true); }
       });
       galleryEl.appendChild(card);
     });
